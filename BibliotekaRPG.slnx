@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="BibliotekaRPG/BibliotekaRPG.csproj" />
+  <Project Path="ConsoleRPG/ConsoleRPG.csproj" Id="8f7728a3-ff85-4313-9382-ca2a42bcec3c" />
+  <Project Path="WpfApp1/WpfApp1.csproj" Id="b02c7494-2fd2-44be-86a5-8ec7e0e5e8f1" />
+</Solution>
