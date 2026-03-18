@@ -1,24 +1,95 @@
 using BibliotekaRPG.map;
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using BibliotekaRPG.Inventory;
-using BibliotekaRPG.Inventory.Decorators;
-using BibliotekaRPG.map;
+
 
 namespace WpfRpg
 {
     public partial class MainWindow : Window, IGameEventListener
     {
         private MapSession _session;
+        private CancellationTokenSource? _moveCts;
 
         public MainWindow()
         {
             InitializeComponent();
             InitGame();
+        }
+
+        private async void Tile_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is ValueTuple<int, int> coords)
+            {
+                _moveCts?.Cancel();
+                _moveCts = new CancellationTokenSource();
+                
+                var (r, c) = coords;
+                
+                try 
+                {
+                    await MoveTo(r, c, _moveCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                
+                }
+                catch (Exception ex)
+                {
+                     Log($"Błąd ruchu: {ex.Message}");
+                }
+            }
+        }
+
+        private async Task MoveTo(int targetRow, int targetCol, CancellationToken token)
+        {
+            var start = _session.PlayerPosition;
+            var path = _session.PathFinder.FindPath(start, (targetRow, targetCol));
+            
+            if (path == null)
+            {
+                Log("Nie znaleziono drogi.");
+                return;
+            }
+
+            foreach (var step in path)
+            {
+                if (token.IsCancellationRequested) return;
+
+                if (_session.HasActiveBattle)
+                {
+                    Log("Zatrzymano: walka!");
+                    break;
+                }
+
+                int dr = step.Row - _session.PlayerPosition.Row;
+                int dc = step.Col - _session.PlayerPosition.Col;
+
+                if (!_session.TryMove(dr, dc))
+                {
+                    break;
+                }
+
+                try 
+                {
+                    await Task.Delay(200, token);
+                }
+                catch (TaskCanceledException)
+                {
+                    
+                    return; 
+                }
+
+                if (_session.HasActiveBattle)
+                {
+                    break;
+                }
+            }
         }
 
         private void InitGame()
@@ -71,11 +142,15 @@ namespace WpfRpg
                         }
                     };
 
+                    border.Tag = (row, col);
+                    border.PreviewMouseLeftButtonDown += Tile_Click;
+
                     border.ToolTip = tile.Type.ToString();
                     mapGrid.Children.Add(border);
                 }
             }
         }
+
 
         private Brush GetTileBrush(ITile tile, int row, int col)
         {
@@ -353,7 +428,7 @@ namespace WpfRpg
 
         public void ShowMap(WorldMap map)
         {
-            // Not used in the GUI path; map rendering is driven by MapSession.
+            
         }
     }
 }

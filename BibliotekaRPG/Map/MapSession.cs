@@ -27,10 +27,12 @@ namespace BibliotekaRPG.map
         public (int Row, int Col) PlayerPosition { get; private set; }
         public Enemy CurrentEnemy { get; private set; }
         public bool HasActiveBattle => CurrentEnemy != null && CurrentEnemy.IsAlive();
+        public PathFinding PathFinder { get; private set; }
 
         public MapSession(Random? encounterRng = null, Random? lootRng = null)
         {
             worldMap = new WorldMap();
+            PathFinder = new PathFinding(worldMap);
             factory = new Factory();
             decorator = new Decorator();
             player = new Player("Bohater", 35, 35, 10, 1, 0, 20, new MeleeAttack());
@@ -88,7 +90,9 @@ namespace BibliotekaRPG.map
             MapChanged?.Invoke();
 
             var tile = worldMap.GetTile(targetRow, targetCol);
-            return HandleTileEnter(tile, targetRow, targetCol);
+            HandleTileEnter(tile, targetRow, targetCol);
+            
+            return true;
         }
 
         public Enemy SpawnEnemy()

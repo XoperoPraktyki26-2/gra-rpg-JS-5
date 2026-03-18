@@ -22,7 +22,7 @@ class Program
         {
             DisplayStatus(session);
 
-            Console.WriteLine("Komendy: W/A/S/D – ruch, M – atak wręcz, K – atak magiczny, I – przedmioty, U – użyj itemu, Q – wyjście");
+            Console.WriteLine("Komendy: W/A/S/D – ruch, G – idź do, M – atak wręcz, K – atak magiczny, I – przedmioty, U – użyj itemu, Q – wyjście");
             var key = Console.ReadKey(true).KeyChar;
 
             switch (char.ToLower(key))
@@ -51,8 +51,54 @@ class Program
                 case 'u':
                     UseItem(session);
                     break;
+                case 'g':
+                    MoveToCoordinates(session);
+                    break;
                 case 'q':
                     return;
+            }
+        }
+    }
+
+    private static void MoveToCoordinates(MapSession session)
+    {
+        Console.Write("\nPodaj rząd (Row): ");
+        if (int.TryParse(Console.ReadLine(), out int r))
+        {
+            Console.Write("Podaj kolumnę (Col): ");
+            if (int.TryParse(Console.ReadLine(), out int c))
+            {
+                var path = session.PathFinder.FindPath(session.PlayerPosition, (r, c));
+                if (path != null)
+                {
+                    foreach (var step in path)
+                    {
+                        if (session.HasActiveBattle)
+                        {
+                            Console.WriteLine("Zatrzymano: walka!");
+                            break;
+                        }
+
+                        int dr = step.Row - session.PlayerPosition.Row;
+                        int dc = step.Col - session.PlayerPosition.Col;
+                        if (!session.TryMove(dr, dc)) 
+                            break;
+                        
+                        // Wait 0.2s
+                        System.Threading.Thread.Sleep(200);
+                        
+                        // Redraw is handled by TryMove -> MapChanged -> PrintMap
+                        // Check if we are in battle after move
+                         if (session.HasActiveBattle)
+                        {
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Nie znaleziono drogi.");
+                }
             }
         }
     }
