@@ -16,6 +16,11 @@ namespace BibliotekaRPG.map
         private readonly Dictionary<ITile.TileType, double> encounterChances;
         private readonly List<IGameEventListener> gameEventListeners = new();
 
+        private readonly Stack<GameState> history = new();
+        private int rewindTokens = 3;
+
+        public int RewindTokens => rewindTokens;
+
         public event Action<string>? Log;
         public event Action? MapChanged;
         public event Action<Enemy>? BattleStarted;
@@ -51,6 +56,8 @@ namespace BibliotekaRPG.map
             this.lootRng = lootRng ?? new Random();
 
             SeedStartingInventory();
+
+            SaveTurnState();
         }
 
         public void RegisterListener(IGameEventListener listener)
@@ -86,6 +93,8 @@ namespace BibliotekaRPG.map
                 return false;
             }
 
+            SaveTurnState();
+
             PlayerPosition = (targetRow, targetCol);
             MapChanged?.Invoke();
 
@@ -97,6 +106,7 @@ namespace BibliotekaRPG.map
 
         public Enemy SpawnEnemy()
         {
+            SaveTurnState();
             StartBattleAt(PlayerPosition.Row, PlayerPosition.Col, clearTile: false);
             return CurrentEnemy;
         }
@@ -107,10 +117,7 @@ namespace BibliotekaRPG.map
                 return;
 
             if (enemy.GoldReward > 0)
-            {
                 player.ReciveGold(enemy.GoldReward);
-                SendLog($"Zdobyto {enemy.GoldReward} złota.");
-            }
 
             if (enemy.LootTable.Count > 0)
             {
@@ -121,15 +128,76 @@ namespace BibliotekaRPG.map
                     var template = enemy.LootTable[lootRng.Next(enemy.LootTable.Count)];
                     var loot = template.Clone();
                     player.AddItem(loot);
-                    SendLog($"Zdobyto przedmiot: {loot.Name}");
                 }
             }
 
+            if (lootRng.NextDouble() < 0.25)
+                rewindTokens++;
+
             player.GetExp(enemy.ExperienceReward);
             CurrentEnemy = null;
+
             NotifyEnemyDefeated(enemy);
             MapChanged?.Invoke();
             EnemyRewardsProcessed?.Invoke(enemy);
+        }
+
+        public bool UndoTurn()
+        {
+            if (rewindTokens <= 0)
+            {
+                SendLog("Brak tokenów cofania tury!");
+                return false;
+            }
+
+            if (history.Count <= 1)
+            {
+                SendLog("Brak stanu do cofnięcia.");
+                return false;
+            }
+
+            history.Pop();
+            var previous = history.Peek();
+
+            LoadSnapshot(previous);
+
+            CurrentEnemy = null;
+
+            rewindTokens--;
+            SendLog("Cofnięto turę.");
+            MapChanged?.Invoke();
+            return true;
+        }
+
+        private void SaveTurnState()
+        {
+            var snapshot = CreateSnapshot();
+            history.Push(snapshot);
+        }
+
+        public GameState CreateSnapshot()
+        {
+            return new GameState
+            {
+                Player = player.ToData(),
+                PlayerRow = PlayerPosition.Row,
+                PlayerCol = PlayerPosition.Col,
+                Map = worldMap.ToData(),
+                MapSize = worldMap.Size,
+                RewindTokens = rewindTokens
+            };
+        }
+
+
+        public void LoadSnapshot(GameState state)
+        {
+            player.LoadFromData(state.Player);
+            PlayerPosition = (state.PlayerRow, state.PlayerCol);
+
+            worldMap.LoadFromData(state.Map);
+
+            rewindTokens = state.RewindTokens;
+            CurrentEnemy = null;
         }
 
         private void SeedStartingInventory()
@@ -148,30 +216,30 @@ namespace BibliotekaRPG.map
             decorator.PutOn(new ArmorPiece("Chestplate", 0, 15));
         }
 
-        private bool HandleTileEnter(ITile tile, int row, int col)
+        private void SendLog(string message)
+        {
+            Log?.Invoke(message);
+        }
+
+        private void HandleTileEnter(ITile tile, int row, int col)
         {
             switch (tile.Type)
             {
                 case ITile.TileType.EnemySpawn:
-                    SendLog("Natrafiono na przeciwnika!");
                     StartBattleAt(row, col, clearTile: true);
-                    return true;
+                    break;
 
                 case ITile.TileType.Treasure:
-                    SendLog("Natrafiono na skrzynię!");
                     if (tile is Treasure treasure)
-                    {
                         treasure.Entered(player);
-                        SendLog("Znaleziono nagrodę.");
-                        MapChanged?.Invoke();
-                    }
 
                     worldMap.ReplaceTile(row, col, new Grass());
                     MapChanged?.Invoke();
-                    return false;
+                    break;
 
                 default:
-                    return TryStartRandomEncounter(tile, row, col);
+                    TryStartRandomEncounter(tile, row, col);
+                    break;
             }
         }
 
@@ -189,7 +257,6 @@ namespace BibliotekaRPG.map
             foreach (var listener in gameEventListeners)
                 enemy.AddListener(listener);
 
-            SendLog($"Walka z {enemy.Name}!");
             NotifyBattleStart(enemy);
             MapChanged?.Invoke();
         }
@@ -201,7 +268,6 @@ namespace BibliotekaRPG.map
 
             if (encounterRng.NextDouble() < chance)
             {
-                SendLog($"Spotkałeś przeciwnika ({tile.Type})! Nie możesz ruszyć się dopóki go nie pokonasz.");
                 StartBattleAt(row, col, clearTile: false);
                 return true;
             }
@@ -213,6 +279,7 @@ namespace BibliotekaRPG.map
         {
             foreach (var listener in gameEventListeners)
                 listener.OnBattleStart(enemy);
+
             BattleStarted?.Invoke(enemy);
         }
 
@@ -221,11 +288,5 @@ namespace BibliotekaRPG.map
             foreach (var listener in gameEventListeners)
                 listener.OnEnemyDefeated(enemy);
         }
-
-        private void SendLog(string message)
-        {
-            Log?.Invoke(message);
-        }
-
     }
 }

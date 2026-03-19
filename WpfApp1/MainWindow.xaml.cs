@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-
+using BibliotekaRPG;
 
 namespace WpfRpg
 {
@@ -22,26 +22,43 @@ namespace WpfRpg
             InitGame();
         }
 
+        private void InitGame()
+        {
+            _session = new MapSession();
+            _session.RegisterListener(this);
+            _session.Log += Log;
+            _session.MapChanged += RenderMap;
+            _session.BattleStarted += _ => UpdateEnemyUI();
+            _session.EnemyRewardsProcessed += _ => UpdateEnemyUI();
+
+            playerName.Content = _session.Player.Name;
+
+            UpdatePlayerUI();
+            UpdateExpUI();
+            RefreshItemsDropdown();
+            updateStatsPanel();
+            RenderMap();
+        }
+
         private async void Tile_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is Border border && border.Tag is ValueTuple<int, int> coords)
             {
                 _moveCts?.Cancel();
                 _moveCts = new CancellationTokenSource();
-                
+
                 var (r, c) = coords;
-                
-                try 
+
+                try
                 {
                     await MoveTo(r, c, _moveCts.Token);
                 }
                 catch (OperationCanceledException)
                 {
-                
                 }
                 catch (Exception ex)
                 {
-                     Log($"Błąd ruchu: {ex.Message}");
+                    Log($"Błąd ruchu: {ex.Message}");
                 }
             }
         }
@@ -50,7 +67,7 @@ namespace WpfRpg
         {
             var start = _session.PlayerPosition;
             var path = _session.PathFinder.FindPath(start, (targetRow, targetCol));
-            
+
             if (path == null)
             {
                 Log("Nie znaleziono drogi.");
@@ -71,42 +88,20 @@ namespace WpfRpg
                 int dc = step.Col - _session.PlayerPosition.Col;
 
                 if (!_session.TryMove(dr, dc))
-                {
                     break;
-                }
 
-                try 
+                try
                 {
                     await Task.Delay(200, token);
                 }
                 catch (TaskCanceledException)
                 {
-                    
-                    return; 
+                    return;
                 }
 
                 if (_session.HasActiveBattle)
-                {
                     break;
-                }
             }
-        }
-
-        private void InitGame()
-        {
-            _session = new MapSession();
-            _session.RegisterListener(this);
-            _session.Log += Log;
-            _session.MapChanged += RenderMap;
-            _session.BattleStarted += _ => UpdateEnemyUI();
-
-            playerName.Content = _session.Player.Name;
-
-            UpdatePlayerUI();
-            UpdateExpUI();
-            RefreshItemsDropdown();
-            updateStatsPanel();
-            RenderMap();
         }
 
         private void RenderMap()
@@ -144,17 +139,18 @@ namespace WpfRpg
 
                     border.Tag = (row, col);
                     border.PreviewMouseLeftButtonDown += Tile_Click;
-
                     border.ToolTip = tile.Type.ToString();
+
                     mapGrid.Children.Add(border);
                 }
             }
         }
 
-
         private Brush GetTileBrush(ITile tile, int row, int col)
         {
-            if (_session != null && _session.PlayerPosition.Row == row && _session.PlayerPosition.Col == col)
+            if (_session != null &&
+                _session.PlayerPosition.Row == row &&
+                _session.PlayerPosition.Col == col)
                 return Brushes.Gold;
 
             return tile.Type switch
@@ -185,6 +181,7 @@ namespace WpfRpg
 
         private void TryMovePlayer(int deltaRow, int deltaCol)
         {
+            _moveCts?.Cancel();
             _session?.TryMove(deltaRow, deltaCol);
         }
 
@@ -273,6 +270,7 @@ namespace WpfRpg
         public void OnBattleStart(Enemy enemy)
         {
             Log($"Walka z {enemy.Name}!");
+            UpdateEnemyUI();
         }
 
         public void OnEnemyDefeated(Enemy enemy)
@@ -282,6 +280,7 @@ namespace WpfRpg
             UpdatePlayerUI();
             UpdateExpUI();
             updateStatsPanel();
+            UpdateEnemyUI();
         }
 
         public void OnPlayerDefeated(Player player)
@@ -299,6 +298,7 @@ namespace WpfRpg
         public void OnEquipmentPutOn(IStatModifier item)
         {
             Log("Założono: " + item.Name);
+            updateStatsPanel();
         }
 
         public void OnShowStats(Player player)
@@ -314,7 +314,6 @@ namespace WpfRpg
         public void OnShowEquipment(IStatModifier[] items)
         {
             var names = new List<string>();
-
             foreach (var m in items)
                 if (m != null) names.Add(m.Name);
 
@@ -323,7 +322,7 @@ namespace WpfRpg
 
         public void OnEquipmentSlotsFull()
         {
-            Log("nie masz już slotów");
+            Log("Nie masz już wolnych slotów na ekwipunek.");
         }
 
         private void updateStatsPanel()
@@ -331,15 +330,13 @@ namespace WpfRpg
             var player = _session.Player;
             hpStatLabel.Content = $"Hp: {player.Health}/{player.MaxHealth}";
             attackStatLabel.Content = $"Power: {player.AttackPower}";
-            levelStatLabel.Content = $"Level: {player.Level}| XP: {player.Experience}/{player.ExperienceToNextLevel}";
+            levelStatLabel.Content = $"Level: {player.Level} | XP: {player.Experience}/{player.ExperienceToNextLevel}";
 
             modifiersList.Items.Clear();
             foreach (var m in _session.Equipment.modifiers)
             {
                 if (m != null)
-                {
                     modifiersList.Items.Add(m.Name);
-                }
             }
         }
 
@@ -423,6 +420,56 @@ namespace WpfRpg
             {
                 updateStatsPanel();
                 statGrid.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void SaveGame_Click(object sender, RoutedEventArgs e)
+        {
+            var saver = new Saver();
+            var snapshot = _session.CreateSnapshot();
+            saver.Save(snapshot);
+            Log("Gra zapisana.");
+        }
+
+        private void LoadGame_Click(object sender, RoutedEventArgs e)
+        {
+            var saver = new Saver();
+            var loaded = saver.Load();
+
+            if (loaded == null)
+            {
+                Log("Brak zapisu gry.");
+                return;
+            }
+
+            _session.LoadSnapshot(loaded);
+            Log("Wczytano zapis gry.");
+
+            UpdatePlayerUI();
+            UpdateEnemyUI();
+            UpdateExpUI();
+            RefreshItemsDropdown();
+            updateStatsPanel();
+            RenderMap();
+        }
+
+        private void UndoTurn_Click(object sender, RoutedEventArgs e)
+        {
+            _moveCts?.Cancel();
+
+            if (_session.UndoTurn())
+            {
+                Log("Cofnięto turę.");
+                UpdatePlayerUI();
+                UpdateEnemyUI();
+                UpdateExpUI();
+                RefreshItemsDropdown();
+                updateStatsPanel();
+                RenderMap();
+            }
+            else
+            {
+                Log("Nie udało się cofnąć tury.");
             }
         }
 

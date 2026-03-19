@@ -17,11 +17,17 @@ public class ConsoleLogger : IGameEventListener
 
     public void OnBattleStart(Enemy enemy)
     {
+        if (enemy == null)
+            return;
+
         Console.WriteLine($"Walka z {enemy.Name}!");
     }
 
     public void OnEnemyDefeated(Enemy enemy)
     {
+        if (enemy == null)
+            return;
+
         Console.WriteLine($"Pokonałeś {enemy.Name}!");
     }
 
@@ -40,14 +46,25 @@ public class ConsoleLogger : IGameEventListener
         Console.WriteLine("Założono: " + item.Name);
     }
 
+    public void OnEquipmentSlotsFull()
+    {
+        Console.WriteLine("Brak wolnego slotu na wyposażenie!");
+    }
+
     public void OnShowStats(Player player)
     {
-        Console.WriteLine($"HP: {player.Health}/{player.MaxHealth} | Atak: {player.AttackPower} | Level: {player.Level}");
+        Console.WriteLine(
+            $"HP: {player.Health}/{player.MaxHealth} | " +
+            $"Atak: {player.AttackPower} | " +
+            $"Level: {player.Level} | " +
+            $"Złoto: {player.Gold}"
+        );
     }
 
     public void OnShowInventory(List<IItem> items)
     {
         Console.WriteLine("\n--- Przedmioty ---");
+
         if (items.Count == 0)
         {
             Console.WriteLine("Brak przedmiotów.");
@@ -63,6 +80,7 @@ public class ConsoleLogger : IGameEventListener
         Console.WriteLine("\n--- Założone przedmioty ---");
 
         bool empty = true;
+
         foreach (var m in items)
         {
             if (m != null)
@@ -74,11 +92,6 @@ public class ConsoleLogger : IGameEventListener
 
         if (empty)
             Console.WriteLine("Brak założonych przedmiotów.");
-    }
-
-    public void OnEquipmentSlotsFull()
-    {
-        Console.WriteLine("Brak Wolnego slotu"); ;
     }
 
     public void ShowMap(WorldMap map)

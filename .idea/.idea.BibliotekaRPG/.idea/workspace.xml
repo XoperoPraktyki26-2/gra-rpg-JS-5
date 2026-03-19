@@ -8,20 +8,38 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a6516467-4a20-4e6d-8979-03830d123f29" name="Changes" comment="" />
+    <list default="true" id="a6516467-4a20-4e6d-8979-03830d123f29" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.BibliotekaRPG/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.BibliotekaRPG/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BibliotekaRPG/ConsoleLogger.cs" beforeDir="false" afterPath="$PROJECT_DIR$/BibliotekaRPG/ConsoleLogger.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BibliotekaRPG/Map/MapSession.cs" beforeDir="false" afterPath="$PROJECT_DIR$/BibliotekaRPG/Map/MapSession.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ConsoleRPG/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ConsoleRPG/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WpfApp1/MainWindow.xaml" beforeDir="false" afterPath="$PROJECT_DIR$/WpfApp1/MainWindow.xaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WpfApp1/MainWindow.xaml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WpfApp1/MainWindow.xaml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WpfApp1/Window1.xaml" beforeDir="false" afterPath="$PROJECT_DIR$/WpfApp1/Window1.xaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/WpfApp1/Window1.xaml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/WpfApp1/Window1.xaml.cs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="2" />
+    <option name="cachedIndexableFilesCount" value="3" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/GameStats.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Inventory/Items/ItemData.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Inventory/Items/ItemExtensions.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Map/PathFinding.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Map/Tiles Data.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Map/WorldMapExtensions.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/PlayerData.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/PlayerExtensions.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Rewards/RewardsData.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Saver.cs" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="McpProjectServerCommands">
     <commands />
@@ -39,26 +57,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    ".NET Project.ConsoleRPG.executor": "Run",
-    ".NET Project.WpfApp1.executor": "Debug",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "git-widget-placeholder": "master",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "vcs.Subversion",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;.NET Project.ConsoleRPG.executor&quot;: &quot;Run&quot;,
+    &quot;.NET Project.WpfApp1.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.AcpAgentsConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected=".NET Project.WpfApp1">
     <configuration name="ConsoleRPG" type="DotNetProject" factoryName=".NET Project">
       <option name="EXE_PATH" value="" />
@@ -119,6 +137,12 @@
       <workItem from="1773823755327" duration="922000" />
       <workItem from="1773825815630" duration="3206000" />
       <workItem from="1773830399609" duration="990000" />
+      <workItem from="1773906111019" duration="1196000" />
+      <workItem from="1773907529644" duration="2317000" />
+      <workItem from="1773912134688" duration="781000" />
+      <workItem from="1773913202638" duration="265000" />
+      <workItem from="1773913942288" duration="5500000" />
+      <workItem from="1773927521924" duration="391000" />
     </task>
     <task id="LOCAL-00001" summary="comitcommit">
       <option name="closed" value="true" />
@@ -200,5 +224,9 @@
         </breakpoint>
       </breakpoints>
     </breakpoint-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
   </component>
 </project>

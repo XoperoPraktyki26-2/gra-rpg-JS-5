@@ -1,8 +1,11 @@
 ﻿using System;
+using BibliotekaRPG;
 using BibliotekaRPG.map;
 
 class Program
 {
+    private static Saver saver = new Saver();
+
     public static void Main(string[] args)
     {
         var session = new MapSession();
@@ -22,84 +25,114 @@ class Program
         {
             DisplayStatus(session);
 
-            Console.WriteLine("Komendy: W/A/S/D – ruch, G – idź do, M – atak wręcz, K – atak magiczny, I – przedmioty, U – użyj itemu, Q – wyjście");
+            Console.WriteLine("Komendy:");
+            Console.WriteLine("W/A/S/D – ruch");
+            Console.WriteLine("G – idź do");
+            Console.WriteLine("M – atak wręcz");
+            Console.WriteLine("K – atak magiczny");
+            Console.WriteLine("I – przedmioty");
+            Console.WriteLine("U – użyj itemu");
+            Console.WriteLine("Z – zapisz grę");
+            Console.WriteLine("L – wczytaj grę");
+            Console.WriteLine("R – cofnij turę");
+            Console.WriteLine("Q – wyjście");
+
             var key = Console.ReadKey(true).KeyChar;
 
             switch (char.ToLower(key))
             {
-                case 'w':
-                    session.TryMove(-1, 0);
-                    break;
-                case 's':
-                    session.TryMove(1, 0);
-                    break;
-                case 'a':
-                    session.TryMove(0, -1);
-                    break;
-                case 'd':
-                    session.TryMove(0, 1);
-                    break;
-                case 'm':
-                    PerformAttack(session, logger, true);
-                    break;
-                case 'k':
-                    PerformAttack(session, logger, false);
-                    break;
-                case 'i':
-                    session.Player.ListItems();
-                    break;
-                case 'u':
-                    UseItem(session);
-                    break;
-                case 'g':
-                    MoveToCoordinates(session);
-                    break;
-                case 'q':
-                    return;
+                case 'w': session.TryMove(-1, 0); break;
+                case 's': session.TryMove(1, 0); break;
+                case 'a': session.TryMove(0, -1); break;
+                case 'd': session.TryMove(0, 1); break;
+
+                case 'm': PerformAttack(session, logger, true); break;
+                case 'k': PerformAttack(session, logger, false); break;
+
+                case 'i': session.Player.ListItems(); break;
+                case 'u': UseItem(session); break;
+
+                case 'g': MoveToCoordinates(session); break;
+
+                case 'z': SaveGame(session); break;
+                case 'l': LoadGame(session); break;
+                case 'r': UndoTurn(session); break;
+
+                case 'q': return;
             }
+        }
+    }
+
+    private static void SaveGame(MapSession session)
+    {
+        var snapshot = session.CreateSnapshot();
+        saver.Save(snapshot);
+        Console.WriteLine("Gra zapisana.");
+    }
+
+    private static void LoadGame(MapSession session)
+    {
+        var loaded = saver.Load();
+        if (loaded != null)
+        {
+            session.LoadSnapshot(loaded);
+            Console.WriteLine("Wczytano zapis gry.");
+            PrintMap(session);
+        }
+        else
+        {
+            Console.WriteLine("Brak zapisu gry.");
+        }
+    }
+
+    private static void UndoTurn(MapSession session)
+    {
+        if (session.UndoTurn())
+        {
+            Console.WriteLine("Cofnięto turę.");
+            PrintMap(session);
+        }
+        else
+        {
+            Console.WriteLine("Nie udało się cofnąć tury.");
         }
     }
 
     private static void MoveToCoordinates(MapSession session)
     {
         Console.Write("\nPodaj rząd (Row): ");
-        if (int.TryParse(Console.ReadLine(), out int r))
-        {
-            Console.Write("Podaj kolumnę (Col): ");
-            if (int.TryParse(Console.ReadLine(), out int c))
-            {
-                var path = session.PathFinder.FindPath(session.PlayerPosition, (r, c));
-                if (path != null)
-                {
-                    foreach (var step in path)
-                    {
-                        if (session.HasActiveBattle)
-                        {
-                            Console.WriteLine("Zatrzymano: walka!");
-                            break;
-                        }
+        if (!int.TryParse(Console.ReadLine(), out int r))
+            return;
 
-                        int dr = step.Row - session.PlayerPosition.Row;
-                        int dc = step.Col - session.PlayerPosition.Col;
-                        if (!session.TryMove(dr, dc)) 
-                            break;
-                        
-                        // Wait 0.2s
-                        System.Threading.Thread.Sleep(200);
-                        
-                        // Redraw is handled by TryMove -> MapChanged -> PrintMap
-                        // Check if we are in battle after move
-                         if (session.HasActiveBattle)
-                        {
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Nie znaleziono drogi.");
-                }
+        Console.Write("Podaj kolumnę (Col): ");
+        if (!int.TryParse(Console.ReadLine(), out int c))
+            return;
+
+        var path = session.PathFinder.FindPath(session.PlayerPosition, (r, c));
+        if (path == null)
+        {
+            Console.WriteLine("Nie znaleziono drogi.");
+            return;
+        }
+
+        foreach (var step in path)
+        {
+            if (session.HasActiveBattle)
+            {
+                Console.WriteLine("Zatrzymano: walka!");
+                break;
             }
+
+            int dr = step.Row - session.PlayerPosition.Row;
+            int dc = step.Col - session.PlayerPosition.Col;
+
+            if (!session.TryMove(dr, dc))
+                break;
+
+            System.Threading.Thread.Sleep(200);
+
+            if (session.HasActiveBattle)
+                break;
         }
     }
 
@@ -136,16 +169,20 @@ class Program
         Console.Write("Wybierz indeks przedmiotu do użycia: ");
 
         if (int.TryParse(Console.ReadLine(), out var index))
-        {
             session.Player.UseItem(index);
-        }
     }
 
     private static void DisplayStatus(MapSession session)
     {
         var player = session.Player;
 
-        Console.WriteLine($"\nPozycja: {session.PlayerPosition.Row},{session.PlayerPosition.Col} | HP: {player.Health}/{player.MaxHealth} | Lvl: {player.Level} | Złoto: {player.Gold}");
+        Console.WriteLine(
+            $"\nPozycja: {session.PlayerPosition.Row},{session.PlayerPosition.Col} | " +
+            $"HP: {player.Health}/{player.MaxHealth} | " +
+            $"Lvl: {player.Level} | " +
+            $"Złoto: {player.Gold} | " +
+            $"Tokeny cofania: {session.RewindTokens}"
+        );
     }
 
     private static void PrintMap(MapSession session)
