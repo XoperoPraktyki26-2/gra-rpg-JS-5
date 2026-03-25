@@ -159,6 +159,49 @@ namespace BibliotekaRPG.map
             logger.ShowMap(this);
         }
 
+        public List<(int Row, int Col)> GetMerchantPositions()
+        {
+            var merchants = new List<(int Row, int Col)>();
+
+            for (int row = 0; row < Size; row++)
+            {
+                for (int col = 0; col < Size; col++)
+                {
+                    if (grid[row, col].Type == ITile.TileType.Merchant)
+                        merchants.Add((row, col));
+                }
+            }
+
+            return merchants;
+        }
+
+        public List<(int Row, int Col)> GetEligibleMerchantSpawnPositions((int Row, int Col) playerPosition)
+        {
+            var positions = new List<(int Row, int Col)>();
+
+            for (int row = 0; row < Size; row++)
+            {
+                for (int col = 0; col < Size; col++)
+                {
+                    if (row == playerPosition.Row && col == playerPosition.Col)
+                        continue;
+
+                    var tile = grid[row, col];
+                    if (!tile.isWalkable)
+                        continue;
+
+                    if (tile.Type == ITile.TileType.Grass ||
+                        tile.Type == ITile.TileType.Forest ||
+                        tile.Type == ITile.TileType.Empty)
+                    {
+                        positions.Add((row, col));
+                    }
+                }
+            }
+
+            return positions;
+        }
+
         private bool AreSpecialTilesReachable()
         {
             var visited = new bool[MapDimension, MapDimension];

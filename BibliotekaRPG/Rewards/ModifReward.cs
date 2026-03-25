@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using BibliotekaRPG.Inventory;
 
 namespace BibliotekaRPG.Rewards
 {
@@ -14,7 +15,14 @@ namespace BibliotekaRPG.Rewards
 
         public void Apply(Player player)
         {
-            player.Equipment.PutOn(md);
+            if (md is EquipmentItem equipmentItem)
+            {
+                player.Equip(equipmentItem);
+            }
+            else
+            {
+                player.Equipment.PutOn(md);
+            }
         }
     }
 }

@@ -4,6 +4,9 @@ using BibliotekaRPG.Inventory.Decorators;
 
 public class Player : Character
 {
+    public const int MaxWeaponSlots = 2;
+    public const int MaxArmorSlots = 4;
+
     private int experience;
     private int experienceToNextLevel;
     private int gold = 0;
@@ -12,10 +15,10 @@ public class Player : Character
     public int ExperienceToNextLevel => experienceToNextLevel;
     public int Gold => gold;
     public List<IItem> Inventory => items;
-    private EquipmentItem equippedWeapon;
-    private EquipmentItem equippedArmor;
-    public IItem EquippedWeapon => equippedWeapon;
-    public IItem EquippedArmor => equippedArmor;
+    private readonly List<EquipmentItem> equippedWeapons = new();
+    private readonly List<EquipmentItem> equippedArmors = new();
+    public IReadOnlyList<EquipmentItem> EquippedWeapons => equippedWeapons.AsReadOnly();
+    public IReadOnlyList<EquipmentItem> EquippedArmors => equippedArmors.AsReadOnly();
 
     public Player(string name, int health, int maxHealth,
         int attackPower, int level, int exp,
@@ -29,6 +32,15 @@ public class Player : Character
     public void ReciveGold(int amm)
     {
         gold += amm;
+    }
+
+    public bool TrySpendGold(int amount)
+    {
+        if (amount <= 0 || gold < amount)
+            return false;
+
+        gold -= amount;
+        return true;
     }
 
     public void GetExp(int amount)
@@ -59,26 +71,76 @@ public class Player : Character
         if (Equipment == null)
             Equipment = new Decorator();
 
+        Inventory.Remove(item);
+
         switch (item.Slot)
         {
             case EquipmentSlot.Weapon:
-                SwapEquipment(ref equippedWeapon, item);
+                EquipToSlot(equippedWeapons, MaxWeaponSlots, item);
                 break;
             case EquipmentSlot.Armor:
-                SwapEquipment(ref equippedArmor, item);
+                EquipToSlot(equippedArmors, MaxArmorSlots, item);
                 break;
         }
     }
 
-    private void SwapEquipment(ref EquipmentItem slot, EquipmentItem newItem)
+    private void EquipToSlot(List<EquipmentItem> slotList, int slotLimit, EquipmentItem newItem)
     {
-        if (slot != null)
+        if (slotList.Count >= slotLimit)
         {
-            Equipment.Remove(slot);
-            Inventory.Add(slot);
+            var replaced = slotList[0];
+            slotList.RemoveAt(0);
+            Equipment.Remove(replaced);
+            Inventory.Add(replaced);
         }
 
-        slot = newItem;
+        slotList.Add(newItem);
         Equipment.PutOn(newItem);
+    }
+
+    public void ResetEquippedItems()
+    {
+        equippedWeapons.Clear();
+        equippedArmors.Clear();
+    }
+
+    public void RegisterEquippedItem(EquipmentItem item)
+    {
+        if (item == null)
+            return;
+
+        switch (item.Slot)
+        {
+            case EquipmentSlot.Weapon:
+                equippedWeapons.Add(item);
+                break;
+            case EquipmentSlot.Armor:
+                equippedArmors.Add(item);
+                break;
+        }
+    }
+
+    public bool Unequip(EquipmentItem item)
+    {
+        if (item == null || Equipment == null)
+            return false;
+
+        bool removed = false;
+        switch (item.Slot)
+        {
+            case EquipmentSlot.Weapon:
+                removed = equippedWeapons.Remove(item);
+                break;
+            case EquipmentSlot.Armor:
+                removed = equippedArmors.Remove(item);
+                break;
+        }
+
+        if (!removed)
+            return false;
+
+        Equipment.Remove(item);
+        Inventory.Add(item);
+        return true;
     }
 }

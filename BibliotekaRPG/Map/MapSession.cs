@@ -13,13 +13,17 @@ namespace BibliotekaRPG.map
         private readonly WorldMap worldMap;
         private readonly Random encounterRng;
         private readonly Random lootRng;
+        private readonly Random merchantRng;
+        private readonly MerchantInventoryFactory merchantInventoryFactory;
         private readonly Dictionary<ITile.TileType, double> encounterChances;
         private readonly List<IGameEventListener> gameEventListeners = new();
 
         private readonly Stack<GameState> history = new();
         private int rewindTokens = 3;
+        private int turnCount;
 
         public int RewindTokens => rewindTokens;
+        public int TurnCount => turnCount;
 
         public event Action<string>? Log;
         public event Action? MapChanged;
@@ -54,6 +58,8 @@ namespace BibliotekaRPG.map
 
             this.encounterRng = encounterRng ?? new Random();
             this.lootRng = lootRng ?? new Random();
+            merchantRng = new Random();
+            merchantInventoryFactory = new MerchantInventoryFactory(merchantRng);
 
             SeedStartingInventory();
 
@@ -96,6 +102,8 @@ namespace BibliotekaRPG.map
             SaveTurnState();
 
             PlayerPosition = (targetRow, targetCol);
+            turnCount++;
+            TrySpawnMerchantsByTurn();
             MapChanged?.Invoke();
 
             var tile = worldMap.GetTile(targetRow, targetCol);
@@ -185,6 +193,8 @@ namespace BibliotekaRPG.map
                 Map = worldMap.ToData(),
                 MapSize = worldMap.Size,
                 RewindTokens = rewindTokens
+                ,
+                TurnCount = turnCount
             };
         }
 
@@ -197,6 +207,7 @@ namespace BibliotekaRPG.map
             worldMap.LoadFromData(state.Map);
 
             rewindTokens = state.RewindTokens;
+            turnCount = state.TurnCount;
             CurrentEnemy = null;
         }
 
@@ -208,12 +219,8 @@ namespace BibliotekaRPG.map
                 player.AddItem(new HPotion("Duża mikstura", 56));
             }
 
-            decorator.PutOn(new ArmorPiece("Sword", 11, 3));
-            decorator.PutOn(new ArmorPiece("Chestplate", 0, 15));
-            decorator.PutOn(new ArmorPiece("Sword", 11, 3));
-            decorator.PutOn(new ArmorPiece("Chestplate", 0, 15));
-            decorator.PutOn(new ArmorPiece("Sword", 11, 3));
-            decorator.PutOn(new ArmorPiece("Chestplate", 0, 15));
+            player.Equip(new EquipmentItem("Startowy miecz", EquipmentSlot.Weapon, 7, 1));
+            player.Equip(new EquipmentItem("Startowy napierśnik", EquipmentSlot.Armor, 0, 10));
         }
 
         private void SendLog(string message)
@@ -241,6 +248,50 @@ namespace BibliotekaRPG.map
                     TryStartRandomEncounter(tile, row, col);
                     break;
             }
+        }
+
+        public Merchant GetMerchantAtPlayerPosition()
+        {
+            var tile = worldMap.GetTile(PlayerPosition.Row, PlayerPosition.Col);
+            return tile as Merchant;
+        }
+
+        public bool BuyFromMerchant(int offerIndex, out string message)
+        {
+            message = string.Empty;
+            var merchant = GetMerchantAtPlayerPosition();
+            if (merchant == null)
+            {
+                message = "Tu nie ma kupca.";
+                return false;
+            }
+
+            if (offerIndex < 0 || offerIndex >= merchant.Offers.Count)
+            {
+                message = "Niepoprawny indeks oferty.";
+                return false;
+            }
+
+            var offer = merchant.Offers[offerIndex];
+            if (!player.TrySpendGold(offer.Price))
+            {
+                message = "Nie masz wystarczająco złota.";
+                return false;
+            }
+
+            SaveTurnState();
+            player.AddItem(offer.Item.Clone());
+            merchant.Offers.RemoveAt(offerIndex);
+            message = $"Kupiono: {offer.Item.Name} za {offer.Price} złota.";
+
+            if (merchant.Offers.Count == 0)
+            {
+                worldMap.ReplaceTile(PlayerPosition.Row, PlayerPosition.Col, new Grass());
+                message += " Kupiec odszedł.";
+            }
+
+            MapChanged?.Invoke();
+            return true;
         }
 
         private void StartBattleAt(int row, int col, bool clearTile)
@@ -273,6 +324,40 @@ namespace BibliotekaRPG.map
             }
 
             return false;
+        }
+
+        private void TrySpawnMerchantsByTurn()
+        {
+            if (turnCount == 0 || turnCount % 5 != 0)
+                return;
+
+            var activeMerchants = worldMap.GetMerchantPositions();
+            var freeSlots = Math.Max(0, 2 - activeMerchants.Count);
+            if (freeSlots == 0)
+                return;
+
+            var spawnCapForWindow = Math.Min(2, freeSlots);
+            var candidates = worldMap.GetEligibleMerchantSpawnPositions(PlayerPosition);
+
+            for (int i = candidates.Count - 1; i > 0; i--)
+            {
+                int swap = merchantRng.Next(i + 1);
+                (candidates[i], candidates[swap]) = (candidates[swap], candidates[i]);
+            }
+
+            var spawnCount = Math.Min(spawnCapForWindow, candidates.Count);
+            for (int i = 0; i < spawnCount; i++)
+            {
+                var target = candidates[i];
+                var offers = merchantInventoryFactory.CreateOffers();
+                worldMap.ReplaceTile(target.Row, target.Col, new Merchant(offers));
+            }
+
+            if (spawnCount > 0)
+            {
+                SendLog($"Na mapie pojawiło się {spawnCount} kupców.");
+                MapChanged?.Invoke();
+            }
         }
 
         private void NotifyBattleStart(Enemy enemy)

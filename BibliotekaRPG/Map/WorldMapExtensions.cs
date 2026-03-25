@@ -23,7 +23,8 @@ namespace BibliotekaRPG
                     {
                         Type = tile.Type.ToString(),
                         IsWalkable = tile.isWalkable,
-                        Reward = null
+                        Reward = null,
+                        MerchantOffers = null
                     };
 
                     if (tile is Treasure)
@@ -32,6 +33,10 @@ namespace BibliotekaRPG
                         {
                             RewardType = "Treasure"
                         };
+                    }
+                    else if (tile is Merchant merchant)
+                    {
+                        data.MerchantOffers = merchant.Offers.ToData();
                     }
 
                     result[index++] = data;
@@ -62,6 +67,7 @@ namespace BibliotekaRPG
                         "Treasure" => new Treasure(map.factory.Spawn()),
                         "EnemySpawn" => new EnemySpawn(),
                         "Empty" => new EmptyTile(),
+                        "Merchant" => new Merchant(td.MerchantOffers.ToOffers()),
                         _ => new Grass()
                     };
 

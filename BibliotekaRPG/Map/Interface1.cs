@@ -8,7 +8,7 @@ namespace BibliotekaRPG.map
     {
         enum TileType
         {
-            Grass, Forest, Mountain, EnemySpawn, Treasure, Empty
+            Grass, Forest, Mountain, EnemySpawn, Treasure, Empty, Merchant
         }
         TileType Type { get; }
         bool isWalkable { get; }

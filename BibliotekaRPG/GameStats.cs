@@ -9,4 +9,5 @@ public class GameState
     public int MapSize { get; set; }
 
     public int RewindTokens { get; set; }
+    public int TurnCount { get; set; }
 }

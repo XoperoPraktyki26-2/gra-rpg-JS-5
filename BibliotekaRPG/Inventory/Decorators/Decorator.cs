@@ -2,7 +2,7 @@
 
 public class Decorator
 {
-    public readonly IStatModifier[] modifiers = new IStatModifier[4];
+    public readonly IStatModifier[] modifiers = new IStatModifier[6];
 
     private readonly List<IGameEventListener> listeners = new List<IGameEventListener>();
 

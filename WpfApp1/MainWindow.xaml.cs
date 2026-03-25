@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using BibliotekaRPG;
+using BibliotekaRPG.Inventory;
 
 namespace WpfRpg
 {
@@ -36,6 +37,7 @@ namespace WpfRpg
             UpdatePlayerUI();
             UpdateExpUI();
             RefreshItemsDropdown();
+            RefreshEquipmentLists();
             updateStatsPanel();
             RenderMap();
         }
@@ -109,6 +111,9 @@ namespace WpfRpg
             if (_session?.Map == null)
                 return;
 
+            UpdateActionButtonState();
+            UpdateMerchantShopVisibility();
+
             var map = _session.Map;
             mapGrid.Rows = map.Size;
             mapGrid.Columns = map.Size;
@@ -161,6 +166,7 @@ namespace WpfRpg
                 ITile.TileType.EnemySpawn => Brushes.DarkRed,
                 ITile.TileType.Treasure => Brushes.DarkGoldenrod,
                 ITile.TileType.Empty => Brushes.SandyBrown,
+                ITile.TileType.Merchant => Brushes.MediumPurple,
                 _ => Brushes.LightGray
             };
         }
@@ -175,6 +181,7 @@ namespace WpfRpg
                 ITile.TileType.EnemySpawn => "E",
                 ITile.TileType.Treasure => "T",
                 ITile.TileType.Empty => ".",
+                ITile.TileType.Merchant => "K",
                 _ => ""
             };
         }
@@ -235,6 +242,54 @@ namespace WpfRpg
                 itemDropdown.SelectedIndex = 0;
         }
 
+        private void RefreshMerchantOffersList()
+        {
+            merchantOffersList.Items.Clear();
+
+            var merchant = _session.GetMerchantAtPlayerPosition();
+            if (merchant == null)
+                return;
+
+            foreach (var offer in merchant.Offers)
+                merchantOffersList.Items.Add(new MerchantOfferListEntry(offer));
+        }
+
+        private void UpdateActionButtonState()
+        {
+            var onMerchant = _session.GetMerchantAtPlayerPosition() != null;
+            attackBtn.Content = onMerchant ? "Sklep" : "Atak";
+        }
+
+        private void UpdateMerchantShopVisibility()
+        {
+            if (_session.GetMerchantAtPlayerPosition() == null)
+            {
+                merchantShopGrid.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (merchantShopGrid.Visibility == Visibility.Visible)
+                RefreshMerchantOffersList();
+        }
+
+        private void RefreshEquipmentLists()
+        {
+            inventoryEquipList.Items.Clear();
+            equippedList.Items.Clear();
+
+            for (int i = 0; i < _session.Player.Inventory.Count; i++)
+            {
+                if (_session.Player.Inventory[i] is EquipmentItem eq)
+                    inventoryEquipList.Items.Add(new EquipmentListEntry(eq));
+            }
+
+            foreach (var eq in _session.Player.EquippedWeapons)
+                equippedList.Items.Add(new EquipmentListEntry(eq));
+
+            foreach (var eq in _session.Player.EquippedArmors)
+                equippedList.Items.Add(new EquipmentListEntry(eq));
+        }
+
         private void Log(string msg)
         {
             logList.Items.Add(msg);
@@ -247,6 +302,7 @@ namespace WpfRpg
             {
                 _session.Player.UseItem(itemDropdown.SelectedIndex);
                 RefreshItemsDropdown();
+                RefreshEquipmentLists();
                 UpdatePlayerUI();
             }
         }
@@ -277,6 +333,7 @@ namespace WpfRpg
         {
             Log($"Pokonałeś {enemy.Name}!");
             RefreshItemsDropdown();
+            RefreshEquipmentLists();
             UpdatePlayerUI();
             UpdateExpUI();
             updateStatsPanel();
@@ -292,6 +349,7 @@ namespace WpfRpg
         public void OnItemUsed(Character user, IItem item)
         {
             Log($"{user.Name} używa {item.Name}");
+            RefreshEquipmentLists();
             UpdatePlayerUI();
         }
 
@@ -340,8 +398,55 @@ namespace WpfRpg
             }
         }
 
+        private void equipmentBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (equipmentGrid.Visibility == Visibility.Visible)
+            {
+                equipmentGrid.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                RefreshEquipmentLists();
+                equipmentGrid.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void inventoryEquipList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (inventoryEquipList.SelectedItem is not EquipmentListEntry entry)
+                return;
+
+            _session.Player.Equip(entry.Item);
+            Log("Założono: " + entry.Item.Name);
+            RefreshItemsDropdown();
+            RefreshEquipmentLists();
+            updateStatsPanel();
+            UpdatePlayerUI();
+        }
+
+        private void equippedList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (equippedList.SelectedItem is not EquipmentListEntry entry)
+                return;
+
+            if (_session.Player.Unequip(entry.Item))
+            {
+                Log("Zdjęto: " + entry.Item.Name);
+                RefreshItemsDropdown();
+                RefreshEquipmentLists();
+                updateStatsPanel();
+                UpdatePlayerUI();
+            }
+        }
+
         private void attackBtn_Click_1(object sender, RoutedEventArgs e)
         {
+            if (_session.GetMerchantAtPlayerPosition() != null)
+            {
+                ToggleMerchantShop();
+                return;
+            }
+
             if (_session.CurrentEnemy == null || !_session.CurrentEnemy.IsAlive())
                 _session.SpawnEnemy();
 
@@ -372,6 +477,74 @@ namespace WpfRpg
             {
                 OnPlayerDefeated(_session.Player);
                 attackBtn.IsEnabled = false;
+            }
+        }
+
+        private void ToggleMerchantShop()
+        {
+            if (_session.GetMerchantAtPlayerPosition() == null)
+            {
+                merchantShopGrid.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (merchantShopGrid.Visibility == Visibility.Visible)
+            {
+                merchantShopGrid.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                RefreshMerchantOffersList();
+                merchantShopGrid.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void buyOfferBtn_Click(object sender, RoutedEventArgs e)
+        {
+            BuySelectedOffer();
+        }
+
+        private void merchantOffersList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            BuySelectedOffer();
+        }
+
+        private void BuySelectedOffer()
+        {
+            if (merchantOffersList.SelectedItem is not MerchantOfferListEntry entry)
+                return;
+
+            var merchant = _session.GetMerchantAtPlayerPosition();
+            if (merchant == null)
+            {
+                merchantShopGrid.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var offerIndex = merchant.Offers.IndexOf(entry.Offer);
+            if (offerIndex < 0)
+            {
+                RefreshMerchantOffersList();
+                return;
+            }
+
+            if (_session.BuyFromMerchant(offerIndex, out var message))
+            {
+                Log(message);
+                RefreshItemsDropdown();
+                RefreshEquipmentLists();
+                updateStatsPanel();
+                UpdatePlayerUI();
+                RefreshMerchantOffersList();
+
+                if (_session.GetMerchantAtPlayerPosition() == null)
+                {
+                    merchantShopGrid.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                Log(message);
             }
         }
 
@@ -449,6 +622,9 @@ namespace WpfRpg
             UpdateEnemyUI();
             UpdateExpUI();
             RefreshItemsDropdown();
+            RefreshEquipmentLists();
+            UpdateActionButtonState();
+            UpdateMerchantShopVisibility();
             updateStatsPanel();
             RenderMap();
         }
@@ -464,6 +640,9 @@ namespace WpfRpg
                 UpdateEnemyUI();
                 UpdateExpUI();
                 RefreshItemsDropdown();
+                RefreshEquipmentLists();
+                UpdateActionButtonState();
+                UpdateMerchantShopVisibility();
                 updateStatsPanel();
                 RenderMap();
             }
@@ -475,7 +654,38 @@ namespace WpfRpg
 
         public void ShowMap(WorldMap map)
         {
-            
+             
+        }
+
+        private class EquipmentListEntry
+        {
+            public EquipmentItem Item { get; }
+
+            public EquipmentListEntry(EquipmentItem item)
+            {
+                Item = item;
+            }
+
+            public override string ToString()
+            {
+                var slot = Item.Slot == EquipmentSlot.Weapon ? "Broń" : "Zbroja";
+                return $"{Item.Name} ({slot}, ATK +{Item.ModifyAttack()}, HP +{Item.ModifyHealth()})";
+            }
+        }
+
+        private class MerchantOfferListEntry
+        {
+            public MerchantOffer Offer { get; }
+
+            public MerchantOfferListEntry(MerchantOffer offer)
+            {
+                Offer = offer;
+            }
+
+            public override string ToString()
+            {
+                return $"{Offer.Item.Name} - {Offer.Price} zł";
+            }
         }
     }
 }

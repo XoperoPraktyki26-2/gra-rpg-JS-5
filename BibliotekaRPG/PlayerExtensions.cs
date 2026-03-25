@@ -59,6 +59,8 @@ namespace BibliotekaRPG
 
             if (player.Equipment is Decorator decorator)
             {
+                player.ResetEquippedItems();
+
                 for (int i = 0; i < decorator.modifiers.Length; i++)
                     decorator.modifiers[i] = null;
 
@@ -66,7 +68,12 @@ namespace BibliotekaRPG
                 {
                     var item = eqData.ToItem();
                     if (item is IStatModifier mod)
+                    {
                         decorator.PutOn(mod);
+                    }
+
+                    if (item is EquipmentItem equippedItem)
+                        player.RegisterEquippedItem(equippedItem);
                 }
             }
         }

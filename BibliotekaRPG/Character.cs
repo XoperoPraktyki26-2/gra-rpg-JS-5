@@ -80,7 +80,14 @@ public class Character
             foreach (var listener in listeners)
                 listener.OnItemUsed(this, item);
 
-            items.RemoveAt(index);
+            if (index < items.Count && ReferenceEquals(items[index], item))
+            {
+                items.RemoveAt(index);
+            }
+            else
+            {
+                items.Remove(item);
+            }
         }
     }
 

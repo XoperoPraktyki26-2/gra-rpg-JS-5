@@ -81,6 +81,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                 <ComboBox x:Name="itemDropdown" Width="160" Height="25"/>
                 <Button x:Name="statsBtn" Content="Statystyki" Width="120" Height="25" Margin="6,0,0,0" Click="statsBtn_Click"/>
+                <Button x:Name="equipmentBtn" Content="Ekwipunek" Width="120" Height="25" Margin="6,0,0,0" Click="equipmentBtn_Click"/>
             </StackPanel>
 
 
@@ -99,6 +100,51 @@
                     <Label x:Name="attackStatLabel" Content="Power:"/>
                     <Label x:Name="levelStatLabel" Content="Level:"/>
                 </StackPanel>
+            </Grid>
+
+            <Grid x:Name="equipmentGrid" Margin="0,6,0,0" Background="#FFD8D8D8"
+                  MaxWidth="520" MaxHeight="180" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Label Grid.Row="0" Grid.Column="0" Content="Plecak (klik = załóż)" FontWeight="Bold" Margin="8,4,8,2"/>
+                <Label Grid.Row="0" Grid.Column="1" Content="Założone (klik = zdejmij)" FontWeight="Bold" Margin="8,4,8,2"/>
+
+                <ListBox x:Name="inventoryEquipList"
+                         Grid.Row="1" Grid.Column="0"
+                         Margin="8,2,6,8"
+                         MouseDoubleClick="inventoryEquipList_MouseDoubleClick"/>
+                <ListBox x:Name="equippedList"
+                         Grid.Row="1" Grid.Column="1"
+                         Margin="6,2,8,8"
+                         MouseDoubleClick="equippedList_MouseDoubleClick"/>
+            </Grid>
+
+            <Grid x:Name="merchantShopGrid" Margin="0,6,0,0" Background="#FFE8D8F8"
+                  MaxWidth="520" MaxHeight="170" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Label Content="Sklep kupca" FontWeight="Bold" Margin="8,4,8,2"/>
+                <ListBox x:Name="merchantOffersList"
+                         Grid.Row="1"
+                         Margin="8,2,8,6"
+                         MouseDoubleClick="merchantOffersList_MouseDoubleClick"/>
+                <Button x:Name="buyOfferBtn"
+                        Grid.Row="2"
+                        Content="Kup wybraną ofertę"
+                        Margin="8,0,8,8"
+                        Height="28"
+                        Click="buyOfferBtn_Click"/>
             </Grid>
 
  

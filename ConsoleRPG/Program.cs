@@ -1,6 +1,8 @@
-﻿using System;
+using System;
 using BibliotekaRPG;
 using BibliotekaRPG.map;
+using BibliotekaRPG.Inventory;
+using System.Collections.Generic;
 
 class Program
 {
@@ -32,14 +34,35 @@ class Program
             Console.WriteLine("K – atak magiczny");
             Console.WriteLine("I – przedmioty");
             Console.WriteLine("U – użyj itemu");
+            Console.WriteLine("E – załóż ekwipunek");
+            Console.WriteLine("N – zdejmij ekwipunek");
+            Console.WriteLine("P – panel statystyk");
+            Console.WriteLine("H – handel z kupcem");
             Console.WriteLine("Z – zapisz grę");
             Console.WriteLine("L – wczytaj grę");
             Console.WriteLine("R – cofnij turę");
             Console.WriteLine("Q – wyjście");
 
-            var key = Console.ReadKey(true).KeyChar;
+            var keyInfo = Console.ReadKey(true);
+            var keyChar = char.ToLower(keyInfo.KeyChar);
 
-            switch (char.ToLower(key))
+            switch (keyInfo.Key)
+            {
+                case ConsoleKey.UpArrow:
+                    session.TryMove(-1, 0);
+                    continue;
+                case ConsoleKey.DownArrow:
+                    session.TryMove(1, 0);
+                    continue;
+                case ConsoleKey.LeftArrow:
+                    session.TryMove(0, -1);
+                    continue;
+                case ConsoleKey.RightArrow:
+                    session.TryMove(0, 1);
+                    continue;
+            }
+
+            switch (keyChar)
             {
                 case 'w': session.TryMove(-1, 0); break;
                 case 's': session.TryMove(1, 0); break;
@@ -51,6 +74,10 @@ class Program
 
                 case 'i': session.Player.ListItems(); break;
                 case 'u': UseItem(session); break;
+                case 'e': EquipItem(session); break;
+                case 'n': UnequipItem(session); break;
+                case 'p': ShowDetailedStats(session); break;
+                case 'h': TradeWithMerchant(session); break;
 
                 case 'g': MoveToCoordinates(session); break;
 
@@ -172,17 +199,144 @@ class Program
             session.Player.UseItem(index);
     }
 
+    private static void EquipItem(MapSession session)
+    {
+        var inventory = session.Player.Inventory;
+        var equipmentChoices = new List<(int InventoryIndex, EquipmentItem Item)>();
+
+        Console.WriteLine("\n--- Ekwipunek w plecaku ---");
+
+        for (int i = 0; i < inventory.Count; i++)
+        {
+            if (inventory[i] is not EquipmentItem eq)
+                continue;
+
+            equipmentChoices.Add((i, eq));
+            var slotName = eq.Slot == EquipmentSlot.Weapon ? "Broń" : "Zbroja";
+            Console.WriteLine(
+                $"{equipmentChoices.Count - 1}. {eq.Name} ({slotName}, ATK +{eq.ModifyAttack()}, HP +{eq.ModifyHealth()})"
+            );
+        }
+
+        if (equipmentChoices.Count == 0)
+        {
+            Console.WriteLine("Brak elementów ekwipunku w plecaku.");
+            return;
+        }
+
+        Console.Write("Wybierz indeks do założenia: ");
+        if (!int.TryParse(Console.ReadLine(), out var choiceIndex))
+            return;
+
+        if (choiceIndex < 0 || choiceIndex >= equipmentChoices.Count)
+        {
+            Console.WriteLine("Niepoprawny indeks.");
+            return;
+        }
+
+        var selected = equipmentChoices[choiceIndex].Item;
+        session.Player.Equip(selected);
+        Console.WriteLine($"Założono: {selected.Name}");
+    }
+
+    private static void UnequipItem(MapSession session)
+    {
+        var equippedChoices = new List<EquipmentItem>();
+
+        Console.WriteLine("\n--- Założony ekwipunek ---");
+
+        foreach (var eq in session.Player.EquippedWeapons)
+            equippedChoices.Add(eq);
+
+        foreach (var eq in session.Player.EquippedArmors)
+            equippedChoices.Add(eq);
+
+        for (int i = 0; i < equippedChoices.Count; i++)
+        {
+            var eq = equippedChoices[i];
+            var slotName = eq.Slot == EquipmentSlot.Weapon ? "Broń" : "Zbroja";
+            Console.WriteLine($"{i}. {eq.Name} ({slotName}, ATK +{eq.ModifyAttack()}, HP +{eq.ModifyHealth()})");
+        }
+
+        if (equippedChoices.Count == 0)
+        {
+            Console.WriteLine("Brak założonych przedmiotów.");
+            return;
+        }
+
+        Console.Write("Wybierz indeks do zdjęcia: ");
+        if (!int.TryParse(Console.ReadLine(), out var choiceIndex))
+            return;
+
+        if (choiceIndex < 0 || choiceIndex >= equippedChoices.Count)
+        {
+            Console.WriteLine("Niepoprawny indeks.");
+            return;
+        }
+
+        var selected = equippedChoices[choiceIndex];
+        if (session.Player.Unequip(selected))
+            Console.WriteLine($"Zdjęto: {selected.Name}");
+        else
+            Console.WriteLine("Nie udało się zdjąć przedmiotu.");
+    }
+
+    private static void ShowDetailedStats(MapSession session)
+    {
+        var player = session.Player;
+
+        Console.WriteLine("\n--- Panel statystyk ---");
+        Console.WriteLine($"HP: {player.Health}/{player.MaxHealth}");
+        Console.WriteLine($"Atak: {player.AttackPower}");
+        Console.WriteLine($"Level: {player.Level}");
+        Console.WriteLine($"XP: {player.Experience}/{player.ExperienceToNextLevel}");
+        Console.WriteLine($"Złoto: {player.Gold}");
+        Console.WriteLine($"Tokeny cofania: {session.RewindTokens}");
+        Console.WriteLine($"Tura: {session.TurnCount}");
+
+        Console.WriteLine("\nBroń:");
+        if (player.EquippedWeapons.Count == 0)
+            Console.WriteLine("- brak");
+        else
+        {
+            foreach (var eq in player.EquippedWeapons)
+                Console.WriteLine($"- {eq.Name} (ATK +{eq.ModifyAttack()}, HP +{eq.ModifyHealth()})");
+        }
+
+        Console.WriteLine("\nZbroja:");
+        if (player.EquippedArmors.Count == 0)
+            Console.WriteLine("- brak");
+        else
+        {
+            foreach (var eq in player.EquippedArmors)
+                Console.WriteLine($"- {eq.Name} (ATK +{eq.ModifyAttack()}, HP +{eq.ModifyHealth()})");
+        }
+    }
+
     private static void DisplayStatus(MapSession session)
     {
         var player = session.Player;
+        var enemy = session.CurrentEnemy;
 
         Console.WriteLine(
             $"\nPozycja: {session.PlayerPosition.Row},{session.PlayerPosition.Col} | " +
             $"HP: {player.Health}/{player.MaxHealth} | " +
             $"Lvl: {player.Level} | " +
             $"Złoto: {player.Gold} | " +
-            $"Tokeny cofania: {session.RewindTokens}"
+            $"Tokeny cofania: {session.RewindTokens} | " +
+            $"Tura: {session.TurnCount}"
         );
+
+        if (enemy != null && enemy.IsAlive())
+        {
+            Console.WriteLine(
+                $"Przeciwnik: {enemy.Name} | HP: {enemy.Health}/{enemy.MaxHealth} | Lvl: {enemy.Level}"
+            );
+        }
+        else
+        {
+            Console.WriteLine("Przeciwnik: brak");
+        }
     }
 
     private static void PrintMap(MapSession session)
@@ -233,7 +387,40 @@ class Program
             ITile.TileType.EnemySpawn => 'E',
             ITile.TileType.Treasure => 'T',
             ITile.TileType.Empty => '.',
+            ITile.TileType.Merchant => 'K',
             _ => '?'
         };
+    }
+
+    private static void TradeWithMerchant(MapSession session)
+    {
+        var merchant = session.GetMerchantAtPlayerPosition();
+        if (merchant == null)
+        {
+            Console.WriteLine("Nie stoisz na polu kupca.");
+            return;
+        }
+
+        if (merchant.Offers.Count == 0)
+        {
+            Console.WriteLine("Kupiec nie ma już towaru.");
+            return;
+        }
+
+        Console.WriteLine("\n--- Oferty kupca ---");
+        for (int i = 0; i < merchant.Offers.Count; i++)
+        {
+            var offer = merchant.Offers[i];
+            Console.WriteLine($"{i}. {offer.Item.Name} - {offer.Price} zł");
+        }
+
+        Console.Write("Podaj indeks oferty do kupienia: ");
+        if (!int.TryParse(Console.ReadLine(), out var index))
+            return;
+
+        if (session.BuyFromMerchant(index, out var message))
+            Console.WriteLine(message);
+        else
+            Console.WriteLine(message);
     }
 }
