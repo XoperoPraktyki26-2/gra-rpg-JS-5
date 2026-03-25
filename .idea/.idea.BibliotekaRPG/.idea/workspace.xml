@@ -9,7 +9,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a6516467-4a20-4e6d-8979-03830d123f29" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/ConsoleRPG/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/ConsoleRPG/Program.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BibliotekaRPG/Map/Merchant.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BibliotekaRPG/Map/MerchantInventoryFactory.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BibliotekaRPG/Map/MerchantOffer.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BibliotekaRPG/Map/MerchantOfferData.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BibliotekaRPG/Map/MerchantOfferExtensions.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,11 +21,23 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="3" />
+    <option name="cachedIndexableFilesCount" value="4" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Kubus0083"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/XoperoPraktyki26-2/gra-rpg-JS-5",
+    "accountId": "835e8aa2-6055-4ac1-b90e-14babfa61750"
+  }
+}]]></component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/BibliotekaRPG/GameStats.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/BibliotekaRPG/Inventory/Items/ItemData.cs" root0="FORCE_HIGHLIGHTING" />
@@ -139,6 +155,7 @@
       <workItem from="1773927939561" duration="594000" />
       <workItem from="1774274926245" duration="2963000" />
       <workItem from="1774424248789" duration="1283000" />
+      <workItem from="1774520898655" duration="396000" />
     </task>
     <task id="LOCAL-00001" summary="comitcommit">
       <option name="closed" value="true" />
