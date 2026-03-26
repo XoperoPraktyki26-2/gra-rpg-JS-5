@@ -1,3 +1,6 @@
+using System;
+using BibliotekaRPG.Quests;
+
 public class GameState
 {
     public PlayerData Player { get; set; }
@@ -10,4 +13,6 @@ public class GameState
 
     public int RewindTokens { get; set; }
     public int TurnCount { get; set; }
+
+    public QuestData[] Quests { get; set; } = Array.Empty<QuestData>();
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BibliotekaRPG.Npcs;
 using BibliotekaRPG.Rewards;
 
 namespace BibliotekaRPG.map
@@ -10,6 +11,7 @@ namespace BibliotekaRPG.map
         public ITile[,] grid = new ITile[MapDimension, MapDimension];
         private readonly Random rng = new Random();
         public RewardFactory factory = new RewardFactory();
+        private readonly NpcGenerator npcGenerator = new();
 
         public (int Row, int Col) PlayerStart { get; private set; }
         public int Size => grid.GetLength(0);
@@ -69,6 +71,7 @@ namespace BibliotekaRPG.map
                 }
 
                 EnsureStartIsWalkable();
+                PlaceNpcs(3);
                 ok = treasureCount == 5 && bossCount == 3 && AreSpecialTilesReachable();
             }
         }
@@ -200,6 +203,35 @@ namespace BibliotekaRPG.map
             }
 
             return positions;
+        }
+
+        private void PlaceNpcs(int count)
+        {
+            int placed = 0;
+            int attempts = 0;
+
+            while (placed < count && attempts < 400)
+            {
+                attempts++;
+                var row = rng.Next(MapDimension);
+                var col = rng.Next(MapDimension);
+
+                if (row == PlayerStart.Row && col == PlayerStart.Col)
+                    continue;
+
+                var tile = grid[row, col];
+                if (tile == null || !tile.isWalkable)
+                    continue;
+
+                if (tile.Type == ITile.TileType.Treasure ||
+                    tile.Type == ITile.TileType.EnemySpawn ||
+                    tile.Type == ITile.TileType.Merchant ||
+                    tile.Type == ITile.TileType.Npc)
+                    continue;
+
+                grid[row, col] = npcGenerator.Generate();
+                placed++;
+            }
         }
 
         private bool AreSpecialTilesReachable()

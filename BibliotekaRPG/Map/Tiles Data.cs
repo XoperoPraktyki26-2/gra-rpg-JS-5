@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BibliotekaRPG.Npcs;
 
 public class TileData
 {
@@ -6,4 +7,5 @@ public class TileData
     public bool IsWalkable { get; set; }
     public RewardData Reward { get; set; }
     public List<MerchantOfferData> MerchantOffers { get; set; }
+    public NpcData Npc { get; set; }
 }

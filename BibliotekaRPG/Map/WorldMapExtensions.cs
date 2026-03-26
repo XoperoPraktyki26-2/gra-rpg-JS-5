@@ -1,3 +1,4 @@
+using BibliotekaRPG.Npcs;
 using BibliotekaRPG.map;
 using System;
 using System.Collections.Generic;
@@ -38,6 +39,10 @@ namespace BibliotekaRPG
                     {
                         data.MerchantOffers = merchant.Offers.ToData();
                     }
+                    else if (tile is NpcTile npcTile)
+                    {
+                        data.Npc = npcTile.Npc;
+                    }
 
                     result[index++] = data;
                 }
@@ -68,6 +73,7 @@ namespace BibliotekaRPG
                         "EnemySpawn" => new EnemySpawn(),
                         "Empty" => new EmptyTile(),
                         "Merchant" => new Merchant(td.MerchantOffers.ToOffers()),
+                        "Npc" when td.Npc != null => new NpcTile(td.Npc),
                         _ => new Grass()
                     };
 

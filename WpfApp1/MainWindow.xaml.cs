@@ -1,6 +1,8 @@
 using BibliotekaRPG.map;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -9,13 +11,16 @@ using System.Windows.Input;
 using System.Windows.Media;
 using BibliotekaRPG;
 using BibliotekaRPG.Inventory;
+using BibliotekaRPG.Quests;
+using BibliotekaRPG.Npcs;
 
 namespace WpfRpg
 {
     public partial class MainWindow : Window, IGameEventListener
     {
-        private MapSession _session;
+        private MapSession _session = null!;
         private CancellationTokenSource? _moveCts;
+        private string? _currentNpcName;
 
         public MainWindow()
         {
@@ -30,7 +35,12 @@ namespace WpfRpg
             _session.Log += Log;
             _session.MapChanged += RenderMap;
             _session.BattleStarted += _ => UpdateEnemyUI();
-            _session.EnemyRewardsProcessed += _ => UpdateEnemyUI();
+            _session.EnemyRewardsProcessed += _ =>
+            {
+                UpdateEnemyUI();
+                UpdateQuestUI();
+            };
+            _session.NpcEncountered += OnNpcEncountered;
 
             playerName.Content = _session.Player.Name;
 
@@ -40,6 +50,7 @@ namespace WpfRpg
             RefreshEquipmentLists();
             updateStatsPanel();
             RenderMap();
+            UpdateQuestUI();
         }
 
         private async void Tile_Click(object sender, MouseButtonEventArgs e)
@@ -270,6 +281,15 @@ namespace WpfRpg
 
             if (merchantShopGrid.Visibility == Visibility.Visible)
                 RefreshMerchantOffersList();
+        }
+
+        private void UpdateQuestUI()
+        {
+            questList.Items.Clear();
+            foreach (var quest in _session.ActiveQuests)
+            {
+                questList.Items.Add(new QuestListEntry(quest));
+            }
         }
 
         private void RefreshEquipmentLists()
@@ -627,6 +647,7 @@ namespace WpfRpg
             UpdateMerchantShopVisibility();
             updateStatsPanel();
             RenderMap();
+            UpdateQuestUI();
         }
 
         private void UndoTurn_Click(object sender, RoutedEventArgs e)
@@ -645,6 +666,7 @@ namespace WpfRpg
                 UpdateMerchantShopVisibility();
                 updateStatsPanel();
                 RenderMap();
+                UpdateQuestUI();
             }
             else
             {
@@ -652,9 +674,193 @@ namespace WpfRpg
             }
         }
 
+        private void OpenDialog_Click(object sender, RoutedEventArgs e)
+        {
+            ShowDialogPanel("Strażnik polany", "Strażnik patrolu", "SP", BuildDialogIntro(), new[]
+            {
+                new DialogOption("Opowiedz o zadaniach", DescribeQuests),
+                new DialogOption("Szczegóły patroli", () => dialogContent.Text = BuildQuestDetailText()),
+                new DialogOption("Podsumowanie", () => dialogContent.Text = BuildQuestSummary()),
+                new DialogOption("Zamknij", CloseDialog)
+            });
+        }
+
+        private void OnNpcEncountered(NpcEncounterInfo info)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _currentNpcName = info.Npc.Name;
+                ShowDialogPanel(
+                    info.Npc.Name,
+                    info.Npc.Role,
+                    GetAvatarInitial(info.Npc.Name),
+                    BuildNpcIntro(info.Npc),
+                    new[]
+                    {
+                        new DialogOption("Poproś o zadanie", () => dialogContent.Text = BuildNpcTaskText(info.Npc)),
+                        new DialogOption("Pokaż szczegóły", () => dialogContent.Text = BuildNpcIntro(info.Npc)),
+                        new DialogOption("Zakończ", CloseDialog),
+                        new DialogOption("Zaatakuj", TriggerNpcCombatFromDialog, true)
+                    });
+            });
+        }
+
+        private void ShowDialogPanel(string title, string role, string avatar, string content, IEnumerable<DialogOption> options)
+        {
+            dialogNpcName.Text = title;
+            dialogNpcRole.Text = role;
+            dialogNpcAvatar.Text = avatar;
+            dialogContent.Text = content;
+            SetDialogButtons(options);
+            dialogOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void SetDialogButtons(IEnumerable<DialogOption> options)
+        {
+            dialogButtonsPanel.Children.Clear();
+
+            foreach (var option in options)
+            {
+                var textBlock = new TextBlock
+                {
+                    Text = $"> {option.Label}",
+                    Cursor = Cursors.Hand,
+                    FontFamily = new FontFamily("Courier New"),
+                    FontSize = 20,
+                    Margin = new Thickness(0, 6, 0, 0),
+                    Foreground = option.LeadsToCombat ? Brushes.OrangeRed : Brushes.LightCyan
+                };
+
+                textBlock.MouseLeftButtonUp += (_, _) => option.Action?.Invoke();
+                textBlock.MouseEnter += (_, _) => textBlock.TextDecorations = TextDecorations.Underline;
+                textBlock.MouseLeave += (_, _) => textBlock.TextDecorations = null;
+
+                dialogButtonsPanel.Children.Add(textBlock);
+            }
+        }
+
+        private void DescribeQuests()
+        {
+            dialogContent.Text = BuildQuestDetailText();
+        }
+
+        private string BuildNpcIntro(NpcData npc)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine(npc.Dialogue);
+            sb.AppendLine();
+            sb.AppendLine($"Wzajemna opinia: {npc.Opinion}%");
+            sb.AppendLine($"Wskazówka misji: {npc.TaskHint}");
+            return sb.ToString().TrimEnd();
+        }
+
+        private string BuildNpcTaskText(NpcData npc)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Zadanie:");
+            sb.AppendLine($"• {npc.TaskHint}");
+            sb.AppendLine();
+            sb.AppendLine($"Opinia: {npc.Opinion}%");
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string GetAvatarInitial(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "?";
+
+            return name.Trim()[0].ToString().ToUpperInvariant();
+        }
+
+        private string BuildDialogIntro()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Strażnik: W okolicy pojawiły się grupy potworów. Twoja pomoc jest niezbędna.");
+            sb.AppendLine();
+            sb.AppendLine(BuildQuestSummary());
+            return sb.ToString().TrimEnd();
+        }
+
+        private string BuildQuestSummary()
+        {
+            if (_session.ActiveQuests.Count == 0)
+                return "Brak aktywnych zadań.";
+
+            var sb = new StringBuilder();
+
+            foreach (var quest in _session.ActiveQuests)
+            {
+                sb.AppendLine($"{quest.Title} – {quest.ProgressDescription}");
+                sb.AppendLine($"  {quest.Description}");
+                sb.AppendLine($"  Nagroda: {quest.RewardDescription}");
+                sb.AppendLine();
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        private string BuildQuestDetailText()
+        {
+            if (_session.ActiveQuests.Count == 0)
+                return "Nie ma otwartych zadań ani patroli do wykonania.";
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Szczegóły patroli:");
+            sb.AppendLine();
+
+            foreach (var quest in _session.ActiveQuests)
+            {
+                sb.AppendLine($"• {quest.Title}");
+                sb.AppendLine($"  {quest.Description}");
+                sb.AppendLine($"  Postęp: {quest.ProgressDescription}");
+                sb.AppendLine($"  Nagroda: {quest.RewardDescription}");
+                sb.AppendLine();
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        private void CloseDialog()
+        {
+            dialogOverlay.Visibility = Visibility.Collapsed;
+            dialogButtonsPanel.Children.Clear();
+            _currentNpcName = null;
+        }
+
+        private void TriggerNpcCombatFromDialog()
+        {
+            var targetName = _currentNpcName ?? "napotkanego NPC";
+            CloseDialog();
+            Log($"Zaatakowałeś {targetName} z prowokacji!");
+
+            if (!_session.TryStartCombatWithCurrentNpc())
+            {
+                Log("Nie można obecnie rozpocząć walki.");
+                return;
+            }
+
+            UpdateEnemyUI();
+        }
+
         public void ShowMap(WorldMap map)
         {
              
+        }
+
+        private class QuestListEntry
+        {
+            public QuestListEntry(Quest quest)
+            {
+                Title = quest.Title;
+                Description = quest.Description;
+                Progress = quest.ProgressDescription;
+                Reward = quest.RewardDescription;
+            }
+
+            public string Title { get; }
+            public string Description { get; }
+            public string Progress { get; }
+            public string Reward { get; }
         }
 
         private class EquipmentListEntry
@@ -687,5 +893,7 @@ namespace WpfRpg
                 return $"{Offer.Item.Name} - {Offer.Price} zł";
             }
         }
+
+        private record DialogOption(string Label, Action Action, bool LeadsToCombat = false);
     }
 }

@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BibliotekaRPG.Inventory;
 using BibliotekaRPG.Inventory.Decorators;
+using BibliotekaRPG.Npcs;
+using BibliotekaRPG.Quests;
 
 namespace BibliotekaRPG.map
 {
@@ -21,6 +24,11 @@ namespace BibliotekaRPG.map
         private readonly Stack<GameState> history = new();
         private int rewindTokens = 3;
         private int turnCount;
+        private readonly List<Quest> activeQuests = new();
+        private NpcTile? lastEncounteredNpc;
+        private (int Row, int Col)? lastEncounteredNpcPosition;
+        private (int Row, int Col)? npcBattlePosition;
+        private string? npcBattleName;
 
         public int RewindTokens => rewindTokens;
         public int TurnCount => turnCount;
@@ -29,6 +37,7 @@ namespace BibliotekaRPG.map
         public event Action? MapChanged;
         public event Action<Enemy>? BattleStarted;
         public event Action<Enemy>? EnemyRewardsProcessed;
+        public event Action<NpcEncounterInfo>? NpcEncountered;
 
         public Player Player => player;
         public Decorator Equipment => decorator;
@@ -37,6 +46,7 @@ namespace BibliotekaRPG.map
         public Enemy CurrentEnemy { get; private set; }
         public bool HasActiveBattle => CurrentEnemy != null && CurrentEnemy.IsAlive();
         public PathFinding PathFinder { get; private set; }
+        public IReadOnlyList<Quest> ActiveQuests => activeQuests.AsReadOnly();
 
         public MapSession(Random? encounterRng = null, Random? lootRng = null)
         {
@@ -62,6 +72,7 @@ namespace BibliotekaRPG.map
             merchantInventoryFactory = new MerchantInventoryFactory(merchantRng);
 
             SeedStartingInventory();
+            InitializeDefaultQuests();
 
             SaveTurnState();
         }
@@ -143,11 +154,24 @@ namespace BibliotekaRPG.map
                 rewindTokens++;
 
             player.GetExp(enemy.ExperienceReward);
+            UpdateQuestProgress(enemy);
             CurrentEnemy = null;
 
             NotifyEnemyDefeated(enemy);
             MapChanged?.Invoke();
             EnemyRewardsProcessed?.Invoke(enemy);
+
+            if (npcBattlePosition.HasValue)
+            {
+                var (row, col) = npcBattlePosition.Value;
+                worldMap.ReplaceTile(row, col, new Grass());
+                MapChanged?.Invoke();
+                var name = npcBattleName ?? enemy.Name;
+                SendLog($"{name} zniknął po walce.");
+                npcBattlePosition = null;
+                npcBattleName = null;
+                ClearNpcMarker();
+            }
         }
 
         public bool UndoTurn()
@@ -192,9 +216,9 @@ namespace BibliotekaRPG.map
                 PlayerCol = PlayerPosition.Col,
                 Map = worldMap.ToData(),
                 MapSize = worldMap.Size,
-                RewindTokens = rewindTokens
-                ,
-                TurnCount = turnCount
+                RewindTokens = rewindTokens,
+                TurnCount = turnCount,
+                Quests = activeQuests.Select(q => q.ToData()).ToArray()
             };
         }
 
@@ -203,6 +227,8 @@ namespace BibliotekaRPG.map
         {
             player.LoadFromData(state.Player);
             PlayerPosition = (state.PlayerRow, state.PlayerCol);
+
+            RestoreQuestState(state.Quests);
 
             worldMap.LoadFromData(state.Map);
 
@@ -223,13 +249,87 @@ namespace BibliotekaRPG.map
             player.Equip(new EquipmentItem("Startowy napierśnik", EquipmentSlot.Armor, 0, 10));
         }
 
+        private void InitializeDefaultQuests()
+        {
+            activeQuests.Clear();
+            activeQuests.Add(new KillQuest(
+                "orc-hunt",
+                "Zabójcy okrów",
+                "Zlikwiduj renegatów z lasu i przynieś dowód z ich obozu.",
+                "Ork",
+                3,
+                45,
+                20));
+
+            activeQuests.Add(new KillQuest(
+                "goblin-clearing",
+                "Zwiadowcy krasnoludzkiej straży",
+                "Oczyść okolicę z goblinów, które napadają na karawany kupców.",
+                "Goblin",
+                5,
+                30,
+                15));
+        }
+
+        private void RestoreQuestState(QuestData[] savedQuests)
+        {
+            if (savedQuests == null || savedQuests.Length == 0)
+            {
+                InitializeDefaultQuests();
+                return;
+            }
+
+            activeQuests.Clear();
+            foreach (var questData in savedQuests)
+            {
+                var quest = Quest.FromData(questData);
+                if (quest != null)
+                    activeQuests.Add(quest);
+            }
+
+            if (activeQuests.Count == 0)
+                InitializeDefaultQuests();
+        }
+
         private void SendLog(string message)
         {
             Log?.Invoke(message);
         }
 
+        private void ClearNpcMarker()
+        {
+            lastEncounteredNpc = null;
+            lastEncounteredNpcPosition = null;
+        }
+
+        private void UpdateQuestProgress(Enemy enemy)
+        {
+            if (enemy == null)
+                return;
+
+            foreach (var quest in activeQuests)
+            {
+                if (!quest.TryTrackKill(enemy))
+                    continue;
+
+                if (quest.IsCompleted && !quest.RewardClaimed)
+                {
+                    player.ReciveGold(quest.GoldReward);
+                    player.GetExp(quest.ExperienceReward);
+                    quest.MarkRewardClaimed();
+                    SendLog($"Zadanie '{quest.Title}' ukończone! Otrzymano {quest.GoldReward} zł i {quest.ExperienceReward} exp.");
+                }
+                else
+                {
+                    SendLog($"Zadanie '{quest.Title}' postęp: {quest.ProgressDescription}");
+                }
+            }
+        }
+
         private void HandleTileEnter(ITile tile, int row, int col)
         {
+            ClearNpcMarker();
+
             switch (tile.Type)
             {
                 case ITile.TileType.EnemySpawn:
@@ -242,6 +342,14 @@ namespace BibliotekaRPG.map
 
                     worldMap.ReplaceTile(row, col, new Grass());
                     MapChanged?.Invoke();
+                    break;
+                case ITile.TileType.Npc:
+                    if (tile is NpcTile npc)
+                    {
+                        lastEncounteredNpc = npc;
+                        lastEncounteredNpcPosition = (row, col);
+                        NotifyNpcEncounter(npc, row, col);
+                    }
                     break;
 
                 default:
@@ -326,6 +434,42 @@ namespace BibliotekaRPG.map
             return false;
         }
 
+        public bool TryStartCombatWithCurrentNpc()
+        {
+            if (HasActiveBattle || lastEncounteredNpc == null || lastEncounteredNpcPosition == null)
+                return false;
+
+            var npcData = lastEncounteredNpc.Npc;
+            if (npcData == null)
+                return false;
+
+            SaveTurnState();
+
+            var enemy = CreateEnemyFromNpc(npcData);
+            CurrentEnemy = enemy;
+            foreach (var listener in gameEventListeners)
+                enemy.AddListener(listener);
+
+            npcBattlePosition = lastEncounteredNpcPosition;
+            npcBattleName = enemy.Name;
+            ClearNpcMarker();
+
+            NotifyBattleStart(enemy);
+            MapChanged?.Invoke();
+            return true;
+        }
+
+        private Enemy CreateEnemyFromNpc(NpcData npcData)
+        {
+            int health = Math.Max(35, 45 + npcData.Opinion / 2);
+            int attack = Math.Max(5, 8 + npcData.Opinion / 10);
+            int level = Math.Max(1, npcData.Opinion / 25);
+            int expReward = 20 + npcData.Opinion / 2;
+            int goldReward = 12 + npcData.Opinion / 3;
+
+            return new Enemy(npcData.Name ?? "Nieznajomy", health, health, attack, level, expReward, goldReward, Array.Empty<IItem>(), new MeleeAttack());
+        }
+
         private void TrySpawnMerchantsByTurn()
         {
             if (turnCount == 0 || turnCount % 5 != 0)
@@ -372,6 +516,19 @@ namespace BibliotekaRPG.map
         {
             foreach (var listener in gameEventListeners)
                 listener.OnEnemyDefeated(enemy);
+        }
+
+        private void NotifyNpcEncounter(NpcTile npcTile, int row, int col)
+        {
+            if (npcTile == null)
+                return;
+
+            var data = npcTile.Npc;
+            if (data == null)
+                return;
+
+            SendLog($"Spotkałeś {data.Role} {data.Name}. Wzbudza opinię na poziomie {data.Opinion}%.");
+            NpcEncountered?.Invoke(new NpcEncounterInfo(data, row, col));
         }
     }
 }
