@@ -1,0 +1,222 @@
+﻿<Window x:Class="WpfRpg.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RPG" Height="600" Width="1000"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+
+
+        <StackPanel Grid.Column="0" Margin="10" Orientation="Vertical">
+            <Label Content="Mapa" FontSize="18" FontWeight="Bold"/>
+            <Border BorderBrush="DarkGray" BorderThickness="2" Padding="4" Margin="0,4,0,10" Height="360">
+                <UniformGrid x:Name="mapGrid" Rows="9" Columns="9"/>
+            </Border>
+
+            <Grid Height="110">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Content="▲" Grid.Row="0" Grid.Column="1" Click="MoveUp_Click" Margin="2"/>
+                <Button Content="◀" Grid.Row="1" Grid.Column="0" Click="MoveLeft_Click" Margin="2"/>
+                <Button Content="▶" Grid.Row="1" Grid.Column="2" Click="MoveRight_Click" Margin="2"/>
+                <Button Content="▼" Grid.Row="2" Grid.Column="1" Click="MoveDown_Click" Margin="2"/>
+            </Grid>
+
+            <TextBlock x:Name="moveHint"
+                       Text="Poruszaj się WASD lub strzałkami po mapie. EnemySpawn wywołuje walkę, Treasure nagradza."
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="10" Orientation="Vertical">
+
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <Label x:Name="playerName" Content="Nazwa gracza" FontSize="20" FontWeight="Bold"/>
+                    <Label x:Name="playerLevel" Content="Lvl" FontSize="14"/>
+                    <Label x:Name="playerGoldLabel" Content="Złoto: 0" FontSize="14"/>
+                    <ProgressBar x:Name="HealthBar" Height="12" Margin="0,4,0,0"/>
+                    <ProgressBar x:Name="levelBar" Height="10" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1">
+                    <Label x:Name="enemyName" Content="Przeciwnik" FontSize="20" FontWeight="Bold"/>
+                    <Label x:Name="enemyLevel" Content="Lvl" FontSize="14"/>
+                    <ProgressBar x:Name="enemyHealthBar" Height="12" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+
+
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <RadioButton x:Name="radioBtnMele" Content="Wręcz" GroupName="typ_ataku" IsChecked="True" Margin="0,8,0,0"/>
+                <RadioButton x:Name="radioBtnMagic" Content="Magia" GroupName="typ_ataku" Margin="0,8,0,0"/>
+                <Button x:Name="attackBtn" Content="Atak" Width="80" Height="35" Margin="8,6" Click="attackBtn_Click_1"/>
+                <Button x:Name="useItemBtn" Content="Itemy" Width="80" Height="35" Margin="0,6" Click="useItemBtn_Click"/>
+            </StackPanel>
+
+
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <ComboBox x:Name="itemDropdown" Width="160" Height="25"/>
+                <Button x:Name="statsBtn" Content="Statystyki" Width="120" Height="25" Margin="6,0,0,0" Click="statsBtn_Click"/>
+                <Button x:Name="equipmentBtn" Content="Ekwipunek" Width="120" Height="25" Margin="6,0,0,0" Click="equipmentBtn_Click"/>
+            </StackPanel>
+
+
+            <Grid x:Name="statGrid" Margin="0,6,0,0" Background="#FFC8C8C8"
+                  MaxWidth="350" MaxHeight="120" Visibility="Collapsed">
+                <ListView x:Name="modifiersList" SelectionMode="Single" Width="150"
+                          HorizontalAlignment="Right">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Założone itemy" DisplayMemberBinding="{Binding}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <StackPanel Margin="10,10,0,0">
+                    <Label x:Name="hpStatLabel" Content="Hp:"/>
+                    <Label x:Name="attackStatLabel" Content="Power:"/>
+                    <Label x:Name="levelStatLabel" Content="Level:"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="equipmentGrid" Margin="0,6,0,0" Background="#FFD8D8D8"
+                  MaxWidth="520" MaxHeight="180" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Label Grid.Row="0" Grid.Column="0" Content="Plecak (klik = załóż)" FontWeight="Bold" Margin="8,4,8,2"/>
+                <Label Grid.Row="0" Grid.Column="1" Content="Założone (klik = zdejmij)" FontWeight="Bold" Margin="8,4,8,2"/>
+
+                <ListBox x:Name="inventoryEquipList"
+                         Grid.Row="1" Grid.Column="0"
+                         Margin="8,2,6,8"
+                         MouseDoubleClick="inventoryEquipList_MouseDoubleClick"/>
+                <ListBox x:Name="equippedList"
+                         Grid.Row="1" Grid.Column="1"
+                         Margin="6,2,8,8"
+                         MouseDoubleClick="equippedList_MouseDoubleClick"/>
+            </Grid>
+
+            <Grid x:Name="merchantShopGrid" Margin="0,6,0,0" Background="#FFE8D8F8"
+                  MaxWidth="520" MaxHeight="170" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Label Content="Sklep kupca" FontWeight="Bold" Margin="8,4,8,2"/>
+                <ListBox x:Name="merchantOffersList"
+                         Grid.Row="1"
+                         Margin="8,2,8,6"
+                         MouseDoubleClick="merchantOffersList_MouseDoubleClick"/>
+                <Button x:Name="buyOfferBtn"
+                        Grid.Row="2"
+                        Content="Kup wybraną ofertę"
+                        Margin="8,0,8,8"
+                        Height="28"
+                        Click="buyOfferBtn_Click"/>
+            </Grid>
+
+ 
+            <Label Content="Zadania" FontSize="16" Margin="0,10,0,0"/>
+            <ListView x:Name="questList" Height="150" Margin="0,4,0,0">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Zadanie" DisplayMemberBinding="{Binding Title}" Width="150"/>
+                        <GridViewColumn Header="Opis" DisplayMemberBinding="{Binding Description}" Width="220"/>
+                        <GridViewColumn Header="Postęp" DisplayMemberBinding="{Binding Progress}" Width="120"/>
+                        <GridViewColumn Header="Nagroda" DisplayMemberBinding="{Binding Reward}" Width="120"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+            <Label Content="Log" FontSize="16" Margin="0,10,0,0"/>
+            <ListView x:Name="logList" Height="200">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Log" DisplayMemberBinding="{Binding}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+
+        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="Zapisz grę" Width="100" Margin="4" Click="SaveGame_Click"/>
+            <Button Content="Wczytaj grę" Width="100" Margin="4" Click="LoadGame_Click"/>
+            <Button Content="Cofnij turę" Width="100" Margin="4" Click="UndoTurn_Click"/>
+            <Button Content="Rozmowa" Width="100" Margin="4" Click="OpenDialog_Click"/>
+        </StackPanel>
+    </StackPanel>
+
+    <Grid x:Name="dialogOverlay" Grid.ColumnSpan="2" Visibility="Collapsed"
+          Background="#B2000000" Panel.ZIndex="999"
+          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+          Margin="0" ClipToBounds="False">
+        <Border Background="#FF040709" BorderBrush="#FFB0B0B0" BorderThickness="3" Padding="32" Margin="20"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch" CornerRadius="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="84" Height="84" CornerRadius="6" Background="#FF101924" BorderBrush="#FF28A7E1"
+                            BorderThickness="2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                        <TextBlock x:Name="dialogNpcAvatar" Foreground="#FFB0FBEF" FontSize="30" FontWeight="Bold"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="dialogNpcName" FontSize="26" FontWeight="Bold" Foreground="#FFF3F2E5"
+                                   FontFamily="Segoe UI Semibold"/>
+                        <TextBlock x:Name="dialogNpcRole" FontSize="14" Foreground="#FF87A2C3" FontFamily="Segoe UI"/>
+                    </StackPanel>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" Margin="0,0,0,12" VerticalScrollBarVisibility="Auto">
+                    <TextBlock x:Name="dialogContent" TextWrapping="Wrap" FontSize="18" Foreground="#FFE2E4D7"
+                               FontFamily="Courier New" LineHeight="28"/>
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="2" x:Name="dialogButtonsPanel" Orientation="Vertical" Margin="0,4,0,0"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Grid>
+</Window>
